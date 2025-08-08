@@ -1,8 +1,10 @@
+// app/history.js
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../config/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import StatusPill from '../components/StatusPill';
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -10,8 +12,9 @@ export default function HistoryScreen() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // שמירת מצב התחברות
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(currentUser => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
         setUser(currentUser);
       } else {
@@ -21,8 +24,10 @@ export default function HistoryScreen() {
     return unsubscribe;
   }, []);
 
+  // מאזין להזמנות של המשתמש
   useEffect(() => {
     if (!user) return;
+    setLoading(true);
 
     const q = query(
       collection(db, 'packages'),
@@ -31,9 +36,9 @@ export default function HistoryScreen() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+      const data = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setPackages(data);
       setLoading(false);
@@ -62,17 +67,18 @@ export default function HistoryScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>היסטוריית משלוחים</Text>
+
       {packages.map((pkg) => (
         <View key={pkg.id} style={[styles.card, statusStyle(pkg.status)]}>
           <Text style={styles.label}>לכתובת:</Text>
-          <Text style={styles.value}>{pkg.deliveryAddress}</Text>
+          <Text style={styles.value}>{pkg.deliveryAddress || '—'}</Text>
 
           <Text style={styles.label}>סטטוס:</Text>
-          <Text style={styles.value}>{translateStatus(pkg.status)}</Text>
+          <StatusPill status={pkg.status} />
 
           <Text style={styles.label}>תאריך:</Text>
           <Text style={styles.value}>
-            {pkg.createdAt?.toDate().toLocaleString('he-IL')}
+            {formatDate(pkg.createdAt)}
           </Text>
         </View>
       ))}
@@ -80,21 +86,32 @@ export default function HistoryScreen() {
   );
 }
 
-function translateStatus(status) {
-  switch (status) {
-    case 'pending': return 'ממתין לשליח';
-    case 'in_transit': return 'בדרך';
-    case 'delivered': return 'נמסר';
-    default: return 'לא ידוע';
+// תמיכה גם במקרה ש-createdAt הוא string או Date
+function formatDate(createdAt) {
+  try {
+    if (!createdAt) return '—';
+    const d =
+      typeof createdAt?.toDate === 'function'
+        ? createdAt.toDate()
+        : typeof createdAt === 'string'
+        ? new Date(createdAt)
+        : createdAt;
+    return d.toLocaleString('he-IL');
+  } catch {
+    return '—';
   }
 }
 
 function statusStyle(status) {
   switch (status) {
-    case 'pending': return { borderLeftColor: '#f5a623' };
-    case 'in_transit': return { borderLeftColor: '#007aff' };
-    case 'delivered': return { borderLeftColor: '#28a745' };
-    default: return { borderLeftColor: '#ccc' };
+    case 'pending':
+      return { borderLeftColor: '#f5a623' };
+    case 'in_transit':
+      return { borderLeftColor: '#007aff' };
+    case 'delivered':
+      return { borderLeftColor: '#28a745' };
+    default:
+      return { borderLeftColor: '#ccc' };
   }
 }
 

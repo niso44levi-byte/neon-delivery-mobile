@@ -16,21 +16,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        router.replace('/LoginScreen');
-      }
+      if (currentUser) setUser(currentUser);
+      else router.replace('/LoginScreen');
       setLoading(false);
     });
-
     return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, "packages"), where("userEmail", "==", user.email));
+    const q = query(collection(db, 'packages'), where('userEmail', '==', user.email));
     const unsubscribePackages = onSnapshot(q, (querySnapshot) => {
       let pending = 0, in_transit = 0, delivered = 0;
       querySnapshot.forEach((doc) => {
@@ -54,9 +50,11 @@ export default function Dashboard() {
     );
   }
 
+  const name = user?.displayName || user?.email?.split('@')[0] || 'לקוח';
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>ברוך שובך, {user.displayName || 'לקוח'}!</Text>
+      <Text style={styles.title}>ברוך שובך, {name}!</Text>
       <Text style={styles.subtitle}>הנה סיכום הפעילות שלך במערכת.</Text>
 
       <View style={styles.cardContainer}>
@@ -68,6 +66,22 @@ export default function Dashboard() {
       <TouchableOpacity style={styles.button} onPress={() => router.push('/newPackage')}>
         <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#fff" />
         <Text style={styles.buttonText}>צור משלוח חדש</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { marginTop: 12, backgroundColor: '#555' }]}
+        onPress={() => router.push('/history')}
+      >
+        <MaterialCommunityIcons name="history" size={20} color="#fff" />
+        <Text style={styles.buttonText}>צפה בהיסטוריה</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { marginTop: 12, backgroundColor: '#ff3b30' }]}
+        onPress={() => auth.signOut().then(() => router.replace('/LoginScreen'))}
+      >
+        <MaterialCommunityIcons name="logout" size={20} color="#fff" />
+        <Text style={styles.buttonText}>התנתקות</Text>
       </TouchableOpacity>
     </ScrollView>
   );
