@@ -1,11 +1,10 @@
 // app/newPackage.js
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, ActivityIndicator, I18nManager } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../config/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function NewPackage() {
@@ -30,7 +29,7 @@ export default function NewPackage() {
       if (!currentUser) router.replace('/LoginScreen');
     });
     return unsubscribe;
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     let price = 25;
@@ -50,21 +49,26 @@ export default function NewPackage() {
       Alert.alert('שגיאה', 'אנא מלא את כל שדות החובה');
       return;
     }
+    if (formData.recipientPhone && !/^0\d{1,2}-?\d{6,7}$/.test(formData.recipientPhone)) {
+      Alert.alert('שגיאה', 'מספר הטלפון אינו תקין');
+      return;
+    }
     if (!user) {
       Alert.alert('שגיאה', 'המשתמש אינו מחובר');
       return;
     }
+
     setLoading(true);
     try {
       await addDoc(collection(db, 'packages'), {
         ...formData,
         estimatedPrice,
         userEmail: user.email,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
         status: 'pending'
       });
       Alert.alert('הצלחה', 'המשלוח נוצר בהצלחה!');
-      router.replace('/dashboard');
+      router.push('/dashboard');
     } catch (error) {
       console.error(error);
       Alert.alert('שגיאה', 'משהו השתבש ביצירת המשלוח');
@@ -103,26 +107,32 @@ export default function NewPackage() {
       />
 
       <Text style={styles.label}>גודל החבילה *</Text>
-      <Picker
-        selectedValue={formData.packageSize}
-        onValueChange={(value) => handleChange('packageSize', value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="בחר גודל" value="" />
-        <Picker.Item label="קטן (שקית אחת)" value="small" />
-        <Picker.Item label="בינוני (עד 3 שקיות)" value="medium" />
-        <Picker.Item label="גדול (ארגז או יותר)" value="large" />
-      </Picker>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={formData.packageSize}
+          onValueChange={(value) => handleChange('packageSize', value)}
+          style={styles.picker}
+          mode="dropdown"
+        >
+          <Picker.Item label="בחר גודל" value="" />
+          <Picker.Item label="קטן (שקית אחת)" value="small" />
+          <Picker.Item label="בינוני (עד 3 שקיות)" value="medium" />
+          <Picker.Item label="גדול (ארגז או יותר)" value="large" />
+        </Picker>
+      </View>
 
       <Text style={styles.label}>עדיפות</Text>
-      <Picker
-        selectedValue={formData.priority}
-        onValueChange={(value) => handleChange('priority', value)}
-        style={styles.picker}
-      >
-        <Picker.Item label="רגיל (עד שעתיים)" value="normal" />
-        <Picker.Item label="דחוף (עד שעה, בתוספת תשלום)" value="urgent" />
-      </Picker>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={formData.priority}
+          onValueChange={(value) => handleChange('priority', value)}
+          style={styles.picker}
+          mode="dropdown"
+        >
+          <Picker.Item label="רגיל (עד שעתיים)" value="normal" />
+          <Picker.Item label="דחוף (עד שעה, בתוספת תשלום)" value="urgent" />
+        </Picker>
+      </View>
 
       <Text style={styles.label}>הוראות מיוחדות</Text>
       <TextInput
@@ -169,11 +179,16 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 4,
   },
-  picker: {
+  pickerWrapper: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
+    overflow: 'hidden',
     marginTop: 4,
+  },
+  picker: {
+    height: 50,
+    writingDirection: I18nManager.isRTL ? 'rtl' : 'ltr',
   },
   summary: {
     fontSize: 16,

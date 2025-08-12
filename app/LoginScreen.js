@@ -1,9 +1,8 @@
+// app/LoginScreen.js
 import React, { useState, useEffect } from 'react';
 import {
-  View,
   Text,
   TextInput,
-  Image,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -18,12 +17,7 @@ import {
   signInWithCredential,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import {
-  auth,
-  expoClientId,
-  androidClientId,
-  iosClientId,
-} from '../config/firebaseConfig';
+import { auth, expoClientId, androidClientId, iosClientId } from '../config/firebaseConfig';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -34,68 +28,65 @@ WebBrowser.maybeCompleteAuthSession();
 const screenWidth = Dimensions.get('window').width;
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const isRTL = I18nManager.isRTL;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const isRTL = I18nManager.isRTL;
-  const fadeAnim = useState(new Animated.Value(0))[0];
-  const router = useRouter();
 
+  const fadeAnim = useState(new Animated.Value(0))[0];
+
+  // Google auth request (request משמש לבדיקה אם מוכן)
   const [request, response, promptAsync] = Google.useAuthRequest({
     expoClientId,
     androidClientId,
     iosClientId,
   });
 
+  // אנימציית כניסה של הלוגו
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1200,
       useNativeDriver: true,
     }).start();
-  }, []);
+  }, [fadeAnim]);
 
+  // טיפול בתשובת Google → Firebase
   useEffect(() => {
     const signInWithGoogleFirebase = async () => {
-      if (response?.type === 'success') {
-        console.log('✅ Google auth response:', response);
-        const { id_token } = response.params;
+      if (response?.type !== 'success') return;
 
-        if (!id_token) {
-          console.log('❌ No ID token received');
-          Alert.alert('שגיאה', 'לא התקבל אסימון מזהה מ־Google');
-          return;
-        }
+      const { id_token } = response.params;
+      if (!id_token) {
+        Alert.alert(isRTL ? 'שגיאה' : 'Error', isRTL ? 'לא התקבל אסימון מזהה מ־Google' : 'No ID token received from Google');
+        return;
+      }
 
+      try {
         const credential = GoogleAuthProvider.credential(id_token);
-        try {
-          const userCredential = await signInWithCredential(auth, credential);
-          console.log('✅ Firebase userCredential:', userCredential);
-          router.replace('/home');
-        } catch (error) {
-          console.log('❌ Firebase Google Sign-In Error:', error.message);
-          Alert.alert('שגיאה', error.message);
-        }
-      } else {
-        console.log('❌ Google auth failed or canceled:', response);
+        await signInWithCredential(auth, credential);
+        router.replace('/home');
+      } catch (err) {
+        Alert.alert(isRTL ? 'שגיאה' : 'Error', err?.message ?? (isRTL ? 'אירעה שגיאה בהתחברות' : 'Login failed'));
       }
     };
 
     signInWithGoogleFirebase();
-  }, [response]);
+  }, [response, router, isRTL]);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      return Alert.alert('שגיאה', 'נא למלא אימייל וסיסמה');
+      Alert.alert(isRTL ? 'שגיאה' : 'Error', isRTL ? 'נא למלא אימייל וסיסמה' : 'Please fill email and password');
+      return;
     }
-
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email.trim(), password);
       router.replace('/home');
-    } catch (error) {
-      console.log('Login error:', error.message);
-      Alert.alert('שגיאה', error.message);
+    } catch (err) {
+      Alert.alert(isRTL ? 'שגיאה' : 'Error', err?.message ?? (isRTL ? 'אירעה שגיאה בהתחברות' : 'Login failed'));
     } finally {
       setLoading(false);
     }
@@ -110,10 +101,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Animated.Image
-          source={require('../assets/logo.png')}
+          source={require('../assets/images/logo.png')}
           style={[styles.logo, { opacity: fadeAnim }]}
           resizeMode="contain"
         />
+
         <Text style={styles.title}>{isRTL ? 'ברוך הבא' : 'Welcome'}</Text>
 
         <TextInput
@@ -135,15 +127,19 @@ export default function LoginScreen() {
           textAlign={isRTL ? 'right' : 'left'}
         />
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.loginText}>{isRTL ? 'כניסה' : 'Login'}</Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.googleButton} onPress={() => promptAsync()}>
+        <TouchableOpacity
+          style={[styles.googleButton, !request && { opacity: 0.6 }]}
+          onPress={() => promptAsync()}
+          disabled={!request}
+        >
           <Text style={styles.googleText}>
             {isRTL ? 'התחברות עם Google' : 'Sign in with Google'}
           </Text>

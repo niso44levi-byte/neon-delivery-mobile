@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -55,7 +54,7 @@ export default function SignupScreen() {
         end={{ x: 1, y: 1 }}
       >
         <Image
-          source={require('../assets/logo.png')}  // ✅ נתיב מתוקן
+          source={require('../assets/images/logo.png')} 
           style={styles.logo}
           resizeMode="contain"
         />

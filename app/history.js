@@ -22,7 +22,7 @@ export default function HistoryScreen() {
       }
     });
     return unsubscribe;
-  }, []);
+  }, [router]);
 
   // מאזין להזמנות של המשתמש
   useEffect(() => {

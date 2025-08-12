@@ -21,7 +21,7 @@ export default function Dashboard() {
       setLoading(false);
     });
     return () => unsubscribeAuth();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!user) return;
